@@ -21,6 +21,9 @@ import com.github.mustachejava.MustacheFactory;
 import io.quarkus.benchmark.model.Fortune;
 import io.quarkus.benchmark.repository.FortuneRepository;
 
+import io.micrometer.core.annotation.Timed;
+import io.micrometer.core.instrument.MeterRegistry;
+
 @Singleton
 @Path("/")
 @Produces(MediaType.TEXT_HTML+"; charset=UTF-8")
@@ -41,6 +44,9 @@ public class FortuneResource {
 
     @GET
     @Path("/fortunes")
+    @Timed(
+        value="getop.timer",
+        description="Display fortunes")
     public String fortunes() {
         List<Fortune> fortunes = new ArrayList<>(repository.findAllStateless());
         fortunes.add(new Fortune(0, "Additional fortune added at request time."));
