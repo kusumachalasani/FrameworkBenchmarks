@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
+import java.lang.*;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -17,8 +18,11 @@ import javax.ws.rs.core.MediaType;
 import io.quarkus.benchmark.model.World;
 import io.quarkus.benchmark.repository.WorldRepository;
 
+import java.util.concurrent.TimeUnit;
+
 import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 
 @Singleton
 @Path("/")
@@ -26,8 +30,26 @@ import io.micrometer.core.instrument.MeterRegistry;
 @Consumes(MediaType.APPLICATION_JSON)
 public class DbResource {
 
+    private MeterRegistry registry;
+    private Timer timer;
+
+    public DbResource() {
+    }
+
     @Inject
     WorldRepository worldRepository;
+ 
+ 
+    @Inject
+    public DbResource(MeterRegistry registry) {
+	    this.registry = registry;
+	    timer = Timer.builder("latency")
+	           .description("latency for a path.")
+        	   .publishPercentiles(0.5, 0.95, 0.98, 0.99, 0.999)
+	           .percentilePrecision(3)
+		   .publishPercentileHistogram()
+	           .register(registry);
+    }
 
     @GET
     @Path("/db")
@@ -35,9 +57,16 @@ public class DbResource {
        value="getop.timer",
        description="Get db")
     public World db() {
+
+        long startTime = System.currentTimeMillis();
+
         World world = randomWorldForRead();
         if (world==null) throw new IllegalStateException( "No data found in DB. Did you seed the database? Make sure to invoke /createdata once." );
-        return world;
+
+	long endTime = System.currentTimeMillis();
+        long diffTime = (endTime - startTime);
+	timer.record(diffTime, TimeUnit.MILLISECONDS);
+	return world;
     }
 
     @GET
