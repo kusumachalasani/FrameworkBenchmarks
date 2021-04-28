@@ -17,6 +17,10 @@ import javax.ws.rs.core.MediaType;
 import io.quarkus.benchmark.model.World;
 import io.quarkus.benchmark.repository.WorldRepository;
 
+import java.util.concurrent.TimeUnit;
+import io.micrometer.core.annotation.Timed;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 
 @Singleton
 @Path("/")
@@ -24,19 +28,46 @@ import io.quarkus.benchmark.repository.WorldRepository;
 @Consumes(MediaType.APPLICATION_JSON)
 public class DbResource {
 
+    private MeterRegistry registry;
+    private Timer timer;
+
+    public DbResource() {
+    }
+
     @Inject
     WorldRepository worldRepository;
 
+    @Inject
+    public DbResource(MeterRegistry registry) {
+	    this.registry = registry;
+	    timer = Timer.builder("latency")
+	           .description("latency for a path.")
+        	   .publishPercentiles(0.5, 0.95, 0.98, 0.99, 0.999)
+	           .percentilePrecision(3)
+		   .publishPercentileHistogram()
+	           .register(registry);
+    }
+
     @GET
     @Path("/db")
+    @Timed(
+       value="getop.timer",
+       description="Get db")
     public World db() {
+	long startTime = System.currentTimeMillis();
         World world = randomWorldForRead();
         if (world==null) throw new IllegalStateException( "No data found in DB. Did you seed the database? Make sure to invoke /createdata once." );
+	long endTime = System.currentTimeMillis();
+        long diffTime = (endTime - startTime);
+	timer.record(diffTime, TimeUnit.MILLISECONDS);
         return world;
     }
 
     @GET
     @Path("/queries")
+    @Timed(
+       value="getop.timer",
+       description="Get queries")
     public World[] queries(@QueryParam("queries") String queries) {
         final int count = parseQueryCount(queries);
         World[] worlds = randomWorldForRead(count).toArray(new World[0]);
@@ -45,6 +76,9 @@ public class DbResource {
 
     @GET
     @Path("/updates")
+    @Timed(
+       value="getop.timer",
+       description="Get updates")
     //Rules: https://github.com/TechEmpower/FrameworkBenchmarks/wiki/Project-Information-Framework-Tests-Overview#database-updates
     //N.B. the benchmark seems to be designed to get in deadlocks when using a "safe pattern" of updating
     // the entity within the same transaction as the one which read it.

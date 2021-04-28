@@ -28,4 +28,10 @@ COPY --from=maven /quarkus/$MODULE/target/$MODULE-1.0-SNAPSHOT-runner.jar app.ja
 
 EXPOSE 8080
 
-CMD ["java", "-server", "-XX:-UseBiasedLocking", "-XX:+UseStringDeduplication", "-XX:+UseNUMA", "-XX:+UseParallelGC", "-Djava.lang.Integer.IntegerCache.high=10000", "-Dvertx.disableHttpHeadersValidation=true", "-Dvertx.disableMetrics=true", "-Dvertx.disableH2c=true", "-Dvertx.disableWebsockets=true", "-Dvertx.flashPolicyHandler=false", "-Dvertx.threadChecks=false", "-Dvertx.disableContextTimings=true", "-Dvertx.disableTCCL=true", "-Dhibernate.allow_update_outside_transaction=true", "-Djboss.threads.eqe.statistics=false", "-jar", "app.jar"]
+EXPOSE 8080
+
+ENV JAVA_OPTIONS="-server -XX:-UseBiasedLocking -XX:+UseStringDeduplication -XX:+UseNUMA -XX:+UseParallelGC -Djava.lang.Integer.IntegerCache.high=10000 -Dvertx.disableHttpHeadersValidation=true -Dvertx.disableMetrics=true -Dvertx.disableH2c=true -Dvertx.disableWebsockets=true -Dvertx.flashPolicyHandler=false -Dvertx.threadChecks=false -Dvertx.disableContextTimings=true -Dvertx.disableTCCL=true -Dhibernate.allow_update_outside_transaction=true -Djboss.threads.eqe.statistics=false"
+
+ENTRYPOINT java ${JAVA_OPTIONS} -jar app.jar
+
+#CMD ["java", "-server", "-XX:-UseBiasedLocking", "-XX:+UseStringDeduplication", "-XX:+UseNUMA", "-XX:+UseParallelGC", "-Djava.lang.Integer.IntegerCache.high=10000", "-Dvertx.disableHttpHeadersValidation=true", "-Dvertx.disableMetrics=true", "-Dvertx.disableH2c=true", "-Dvertx.disableWebsockets=true", "-Dvertx.flashPolicyHandler=false", "-Dvertx.threadChecks=false", "-Dvertx.disableContextTimings=true", "-Dvertx.disableTCCL=true", "-Dhibernate.allow_update_outside_transaction=true", "-Djboss.threads.eqe.statistics=false", "-jar", "app.jar"]
