@@ -23,8 +23,12 @@ FROM openjdk:11.0.6-jdk-slim
 WORKDIR /quarkus
 ENV MODULE=resteasy-hibernate
 
-COPY --from=maven /quarkus/$MODULE/target/lib lib
-COPY --from=maven /quarkus/$MODULE/target/$MODULE-1.0-SNAPSHOT-runner.jar app.jar
+COPY --from=maven /quarkus/$MODULE/target/quarkus-app/lib lib
+COPY --from=maven /quarkus/$MODULE/target/quarkus-app/quarkus quarkus
+COPY --from=maven /quarkus/$MODULE/target/quarkus-app/app app
+COPY --from=maven /quarkus/$MODULE/target/quarkus-app/quarkus-run.jar app.jar
+#COPY --from=maven /quarkus/$MODULE/target/lib lib
+#COPY --from=maven /quarkus/$MODULE/target/$MODULE-1.0-SNAPSHOT-runner.jar app.jar
 
 EXPOSE 8080
 
