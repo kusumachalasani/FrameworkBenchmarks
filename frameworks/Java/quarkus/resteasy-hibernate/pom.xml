@@ -37,7 +37,13 @@
             <groupId>com.github.spullara.mustache.java</groupId>
             <artifactId>compiler</artifactId>
             <version>0.9.6</version>
+	</dependency>
+	<dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
+            <version>1.11.3.Final</version>
         </dependency>
+    	
 
     </dependencies>
 
