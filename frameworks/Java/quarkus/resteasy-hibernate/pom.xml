@@ -41,7 +41,6 @@
 	<dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
-            <version>1.11.3.Final</version>
         </dependency>
     	
 
