@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.IO.Pipelines;
-using System.Globalization;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
@@ -34,7 +33,7 @@ namespace appMpower
 
          foreach (var fortune in fortunes)
          {
-            writer.Append(_fortunesRowStart).Append(fortune.Id.ToString(CultureInfo.InvariantCulture)).Append(_fortunesColumn).Append(HttpUtility.HtmlEncode(fortune.Message)).Append(_fortunesRowEnd);
+            writer.Append(_fortunesRowStart).Append(fortune.Id).Append(_fortunesColumn).Append(HttpUtility.HtmlEncode(fortune.Message)).Append(_fortunesRowEnd);
          }
 
          writer.Append(_fortunesTableEnd);

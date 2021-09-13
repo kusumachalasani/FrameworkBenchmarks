@@ -18,8 +18,7 @@
     "vibe-d:tls": "notls"
   },
   "versions": [
-    "VibeManualMemoryManagement",
-    "VibeHighEventPriority"
+    "VibeManualMemoryManagement"
   ],
   "configurations": [
     {

@@ -18,7 +18,10 @@ You can run tests against any running server passing the `verify.endpoint` proje
 
 ## Test URLs
 
-In URLs replace `${DB_ENGINE}` with: `postgresql`
+In URLs replace `${DB_ENGINE}` with one of:
+
+* mongodb
+* postgresql
 
 and `${TEMPLATE_ENGINE}` with: `pebble`
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Concurrent;
 using System.Data.Odbc;
 using System.Threading.Tasks;
@@ -8,13 +9,7 @@ namespace appMpower.Db
    {
       private static bool _connectionsCreated = false;
       private static short _createdConnections = 0;
-
-#if MYSQL
-      private static short _maxConnections = 1250; 
-#else
-      private static short _maxConnections = 500;
-#endif
-
+      private static short _maxConnections = 333;
       private static ConcurrentStack<PooledConnection> _stack = new ConcurrentStack<PooledConnection>();
       private static ConcurrentQueue<TaskCompletionSource<PooledConnection>> _waitingQueue = new ConcurrentQueue<TaskCompletionSource<PooledConnection>>();
 
@@ -34,6 +29,7 @@ namespace appMpower.Db
             }
 
             return pooledConnection;
+
          }
          else
          {

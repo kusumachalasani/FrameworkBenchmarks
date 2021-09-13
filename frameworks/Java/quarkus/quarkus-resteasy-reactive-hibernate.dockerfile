@@ -1,4 +1,5 @@
 FROM maven:3.6.3-jdk-11-slim as maven
+ARG QUARKUS_VERSION=1.13.1.Final
 WORKDIR /quarkus
 ENV MODULE=resteasy-reactive-hibernate
 
@@ -6,26 +7,29 @@ COPY pom.xml pom.xml
 COPY $MODULE/pom.xml $MODULE/pom.xml
 
 # Uncomment to test pre-release quarkus
-#RUN mkdir -p /root/.m2/repository/io
-#COPY m2-quarkus /root/.m2/repository/io/quarkus
+RUN mkdir -p /root/.m2/repository/io
+COPY m2-quarkus /root/.m2/repository/io/quarkus
 
 WORKDIR /quarkus/$MODULE
-RUN mvn dependency:go-offline -q
+RUN mvn dependency:go-offline -q -Dquarkus.version=$QUARKUS_VERSION
 WORKDIR /quarkus
 
 COPY $MODULE/src $MODULE/src
 
 WORKDIR /quarkus/$MODULE
-RUN mvn package -q
+RUN mvn package -q -Dquarkus.version=$QUARKUS_VERSION
 WORKDIR /quarkus
 
 FROM openjdk:11.0.6-jdk-slim
 WORKDIR /quarkus
 ENV MODULE=resteasy-reactive-hibernate
 
-COPY --from=maven /quarkus/$MODULE/target/lib lib
-COPY --from=maven /quarkus/$MODULE/target/$MODULE-1.0-SNAPSHOT-runner.jar app.jar
+COPY --from=maven /quarkus/$MODULE/target/quarkus-app/lib/ lib
+COPY --from=maven /quarkus/$MODULE/target/quarkus-app/app/ app
+COPY --from=maven /quarkus/$MODULE/target/quarkus-app/quarkus/ quarkus
+COPY --from=maven /quarkus/$MODULE/target/quarkus-app/quarkus-run.jar quarkus-run.jar
+ADD run_quarkus.sh /quarkus/run_quarkus.sh
+RUN chmod a+x /quarkus/run_quarkus.sh
 
 EXPOSE 8080
-
-CMD ["java", "-server", "-XX:-UseBiasedLocking", "-XX:+UseStringDeduplication", "-XX:+UseNUMA", "-XX:+UseParallelGC", "-Djava.lang.Integer.IntegerCache.high=10000", "-Dvertx.disableHttpHeadersValidation=true", "-Dvertx.disableMetrics=true", "-Dvertx.disableH2c=true", "-Dvertx.disableWebsockets=true", "-Dvertx.flashPolicyHandler=false", "-Dvertx.threadChecks=false", "-Dvertx.disableContextTimings=true", "-Dvertx.disableTCCL=true", "-Dhibernate.allow_update_outside_transaction=true", "-Djboss.threads.eqe.statistics=false", "-jar", "app.jar"]
+ENTRYPOINT "./run_quarkus.sh"

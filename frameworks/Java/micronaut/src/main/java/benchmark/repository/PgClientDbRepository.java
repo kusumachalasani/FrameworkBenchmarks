@@ -7,8 +7,9 @@ import io.reactivex.Flowable;
 import io.reactivex.Single;
 import io.vertx.reactivex.sqlclient.Row;
 import io.vertx.reactivex.sqlclient.Tuple;
+import jakarta.inject.Singleton;
 
-import javax.inject.Singleton;
+
 
 @Singleton
 public class PgClientDbRepository implements DbRepository {

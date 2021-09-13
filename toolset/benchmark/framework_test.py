@@ -56,9 +56,10 @@ class FrameworkTest:
         except OSError:
             pass
 
-        result = self.benchmarker.docker_helper.build(self, build_log_dir)
-        if result != 0:
-            return None
+        if(self.benchmarker.config.rebuild):
+            result = self.benchmarker.docker_helper.build(self, build_log_dir)
+            if result != 0:
+                return None
 
         return self.benchmarker.docker_helper.run(self, run_log_dir)
 

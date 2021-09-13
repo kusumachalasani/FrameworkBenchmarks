@@ -26,19 +26,24 @@ namespace PlatformBenchmarks
 
          var sb = StringBuilderCache.Acquire();
 
-         /*
+         //if (DatabaseServer == DatabaseServer.PostgreSql)
+         //{
+         //sb.Append("UPDATE world SET randomNumber = temp.randomNumber FROM (VALUES ");
+         //Enumerable.Range(0, lastIndex).ToList().ForEach(i => sb.Append($"(@Id_{i}, @Random_{i}), "));
+         //sb.Append($"(@Id_{lastIndex}, @Random_{lastIndex}) ORDER BY 1) AS temp(id, randomNumber) WHERE temp.id = world.id");
+         //}
+         //else
+         //{
+         //   Enumerable.Range(0, batchSize).ToList().ForEach(i => sb.Append($"UPDATE world SET randomnumber = @Random_{i} WHERE id = @Id_{i};"));
+         //}
+
+         /* --- this is extremely slow with odbc, probably due to int specification ? 
          sb.Append("UPDATE world SET randomNumber = temp.randomNumber FROM (VALUES ");
          Enumerable.Range(0, lastIndex).ToList().ForEach(i => sb.Append("(?::int,?::int),"));
-         sb.Append("(?::int,?::int) ORDER BY 1) AS temp(id, randomNumber) WHERE temp.id = world.id");
-         //sb.Append("(?::int,?::int)) AS temp(id, randomNumber) WHERE temp.id = world.id");
-         */
+         //sb.Append("(?::int,?::int) ORDER BY 1) AS temp(id, randomNumber) WHERE temp.id = world.id");
+         sb.Append("(?::int,?::int)) AS temp(id, randomNumber) WHERE temp.id = world.id");
 
-#if MYSQL
-         for (int i = 0; i < batchSize; i++)
-         {
-            sb.Append("UPDATE world SET randomNumber=? WHERE id=?;");
-         }
-#else
+         /* --- only for alternative update statement - will be used for MySQL */
          sb.Append("UPDATE world SET randomNumber=CASE id ");
 
          for (int i = 0; i < batchSize; i++)
@@ -46,15 +51,16 @@ namespace PlatformBenchmarks
             sb.Append("WHEN ? THEN ? ");
          }
 
-         sb.Append("ELSE randomnumber END WHERE id IN(");
+         //Enumerable.Range(0, batchSize).ToList().ForEach(i => sb.Append("WHEN ? THEN ? "));
+         sb.Append("ELSE randomnumber END WHERE id IN (");
 
          for (int i = 0; i < lastIndex; i++)
          {
             sb.Append("?,");
          }
 
+         //Enumerable.Range(0, lastIndex).ToList().ForEach(i => sb.Append("?, "));
          sb.Append("?)");
-#endif
 
          return _queries[batchSize] = StringBuilderCache.GetStringAndRelease(sb);
       }

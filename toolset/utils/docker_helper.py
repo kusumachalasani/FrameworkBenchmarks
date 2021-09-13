@@ -5,6 +5,7 @@ import docker
 import time
 import re
 import traceback
+import ast
 from threading import Thread
 from colorama import Fore, Style
 
@@ -37,6 +38,10 @@ class DockerHelper:
         with open(build_log_file, 'w') as build_log:
             try:
                 client = docker.APIClient(base_url=base_url)
+                log("Path: " + path, prefix=log_prefix, file=build_log)
+                log("Dockerfile: " + dockerfile, prefix=log_prefix, file=build_log)
+                log("tag: " + tag, prefix=log_prefix, file=build_log)
+                # log("Buildargs: " + buildargs, prefix=log_prefix, file=build_log)
                 output = client.build(
                     path=path,
                     dockerfile=dockerfile,
@@ -209,6 +214,14 @@ class DockerHelper:
             if self.benchmarker.config.mode == "debug":
                 ports = {test.port: test.port}
 
+            volumes = {}
+            if self.benchmarker.config.volumes != "None":
+                volumes = json.loads(self.benchmarker.config.volumes)
+
+            environment = {}
+            if self.benchmarker.config.environment != "None":
+                environment = ast.literal_eval(self.benchmarker.config.environment)
+
             container = self.server.containers.run(
                 "techempower/tfb.test.%s" % test.name,
                 name=name,
@@ -225,7 +238,10 @@ class DockerHelper:
                 mem_limit=mem_limit,
                 sysctls=sysctl,
                 remove=True,
-                log_config={'type': None})
+                log_config={'type': None},
+                volumes=volumes,
+                environment=environment
+            )
 
             watch_thread = Thread(
                 target=watch_container,

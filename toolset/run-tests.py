@@ -200,6 +200,22 @@ def main(argv=None):
         default=None,
         help='The network mode to run docker in')
 
+    parser.add_argument(
+        '--doNotRebuild',
+        action='store_true',
+        default=False,
+        help='Rebuild docker images')
+
+    parser.add_argument(
+        '--volumes',
+        default=None,
+        help='Definition of volumes to mount in application container')
+
+    parser.add_argument(
+        '--envs',
+        default=None,
+        help='Environment variables to pass to application container')
+
     args = parser.parse_args()
 
     config = BenchmarkConfig(args)

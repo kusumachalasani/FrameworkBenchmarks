@@ -47,8 +47,6 @@ class TeBkUmMgrWorld {
 	int id;
 	int randomNumber;
 public:
-	TeBkUmMgrWorld(int id);
-	TeBkUmMgrWorld(int id, int randomNumber);
 	TeBkUmMgrWorld();
 	virtual ~TeBkUmMgrWorld();
 	int getId() const;
