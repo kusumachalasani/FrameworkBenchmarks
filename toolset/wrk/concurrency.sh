@@ -49,19 +49,22 @@ echo "---------------------------------------------------------"
 
 
 #for c in $levels
-for c in 512 
+for c in 512 1024 2048
+do
+for thrptrate in 10000 20000 40000 80000 160000 220000 320000
 do
 echo ""
 echo "---------------------------------------------------------"
 echo " Concurrency: $c for $name"
-echo " /wrk/hyperfoil-0.13/bin/wrk2.sh --latency --duration=75 --connections=$c --timeout 8 --threads=$(($c>$max_threads?$max_threads:$c)) --rate=10000 \"$url\""
+echo " /wrk/hyperfoil-0.13/bin/wrk2.sh --latency --duration=75 --connections=$c --timeout 8 --threads=$(($c>$max_threads?$max_threads:$c)) --rate=${thrptrate} \"$url\""
 echo "---------------------------------------------------------"
 echo ""
 STARTTIME=$(date +"%s")
-/wrk/hyperfoil-0.13/bin/wrk2.sh --latency --duration=75 --connections=$c --timeout 8 --threads="$(($c>$max_threads?$max_threads:$c))" --rate=10000 $url
+/wrk/hyperfoil-0.13/bin/wrk2.sh --latency --duration=75 --connections=$c --timeout 8 --threads="$(($c>$max_threads?$max_threads:$c))" --rate=${thrptrate} $url
 echo "STARTTIME $STARTTIME"
 echo "ENDTIME $(date +"%s")"
 sleep 2
+done
 done
 
 echo "---------------------------------------------------------"
