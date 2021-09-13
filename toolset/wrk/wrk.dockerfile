@@ -1,13 +1,17 @@
 FROM buildpack-deps:bionic
+FROM adoptopenjdk/openjdk11:latest
 
-RUN apt-get update && apt-get install -yqq libluajit-5.1-dev libssl-dev luajit
+RUN apt-get update && apt-get install -yqq libluajit-5.1-dev libssl-dev luajit unzip wget
 
 WORKDIR /wrk
-RUN curl -sL https://github.com/wg/wrk/archive/4.1.0.tar.gz | tar xz --strip-components=1
-ENV LDFLAGS="-O3 -march=native -flto"
-ENV CFLAGS="-I /usr/include/luajit-2.1 $LDFLAGS"
-RUN make WITH_LUAJIT=/usr WITH_OPENSSL=/usr -j "$(nproc)"
-RUN cp wrk /usr/local/bin
+#RUN curl -sL https://github.com/Hyperfoil/Hyperfoil/releases/download/release-0.13/hyperfoil-0.13.zip 
+RUN wget https://github.com/Hyperfoil/Hyperfoil/releases/download/release-0.13/hyperfoil-0.13.zip
+RUN unzip hyperfoil-0.13.zip
+#--strip-components=1
+#ENV LDFLAGS="-O3 -march=native -flto"
+#ENV CFLAGS="-I /usr/include/luajit-2.1 $LDFLAGS"
+#RUN make WITH_LUAJIT=/usr WITH_OPENSSL=/usr -j "$(nproc)"
+#RUN cp wrk /usr/local/bin
 
 WORKDIR /
 # Required scripts for benchmarking
