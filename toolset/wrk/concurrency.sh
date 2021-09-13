@@ -10,10 +10,11 @@ echo "---------------------------------------------------------"
 echo ""
 echo "---------------------------------------------------------"
 echo " Running Primer $name"
-echo " /wrk/hyperfoil-0.13/bin/wrk2.sh --latency --duration=5s --connections=8 --timeout 8 --threads=8 --rate=10000 $url"
+#echo " /wrk/hyperfoil-0.13/bin/wrk2.sh --latency --duration=5s --connections=8 --timeout 8 --threads=8 --rate=10000 $url"
+echo " /wrk/hyperfoil-0.13/bin/wrk2.sh --latency --duration=5s --connections=512 --timeout 8 --threads=64 --rate=10000 $url"
 echo "---------------------------------------------------------"
 echo ""
-/wrk/hyperfoil-0.13/bin/wrk2.sh --latency --duration=5 --connections=8 --timeout 8 --threads=8 --rate=10000 $url
+/wrk/hyperfoil-0.13/bin/wrk2.sh --latency --duration=5 --connections=512 --timeout 8 --threads=64 --rate=10000 $url
 sleep 5
 
 echo "---------------------------------------------------------"
@@ -47,16 +48,17 @@ rm -rf /tmp/hyperfoil/run/*
 echo "---------------------------------------------------------"
 
 
-for c in $levels
+#for c in $levels
+for c in 512 
 do
 echo ""
 echo "---------------------------------------------------------"
 echo " Concurrency: $c for $name"
-echo " /wrk/hyperfoil-0.13/bin/wrk2.sh --latency --duration=$duration --connections=$c --timeout 8 --threads=$(($c>$max_threads?$max_threads:$c)) --rate=10000 \"$url\""
+echo " /wrk/hyperfoil-0.13/bin/wrk2.sh --latency --duration=75 --connections=$c --timeout 8 --threads=$(($c>$max_threads?$max_threads:$c)) --rate=10000 \"$url\""
 echo "---------------------------------------------------------"
 echo ""
 STARTTIME=$(date +"%s")
-/wrk/hyperfoil-0.13/bin/wrk2.sh --latency --duration=$duration --connections=$c --timeout 8 --threads="$(($c>$max_threads?$max_threads:$c))" --rate=10000 $url
+/wrk/hyperfoil-0.13/bin/wrk2.sh --latency --duration=75 --connections=$c --timeout 8 --threads="$(($c>$max_threads?$max_threads:$c))" --rate=10000 $url
 echo "STARTTIME $STARTTIME"
 echo "ENDTIME $(date +"%s")"
 sleep 2
