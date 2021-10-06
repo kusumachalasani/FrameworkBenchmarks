@@ -10,7 +10,7 @@
     </parent>
 
     <groupId>io.quarkus.benchmark</groupId>
-    <artifactId>resteasy-hibernate</artifactId>
+    <artifactId>resteasy-hibernate-h2</artifactId>
 
     <dependencies>
         <dependency>
@@ -31,7 +31,7 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-jdbc-postgresql</artifactId>
+            <artifactId>quarkus-jdbc-h2</artifactId>
         </dependency>
         <dependency>
             <groupId>com.github.spullara.mustache.java</groupId>

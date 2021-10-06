@@ -17,8 +17,6 @@ import javax.ws.rs.core.MediaType;
 import io.quarkus.benchmark.model.World;
 import io.quarkus.benchmark.repository.WorldRepository;
 
-import io.micrometer.core.instrument.MeterRegistry;
-import java.util.function.Supplier;
 
 @Singleton
 @Path("/")
@@ -29,24 +27,12 @@ public class DbResource {
     @Inject
     WorldRepository worldRepository;
 
-    private MeterRegistry registry;
-
-    public DbResource() {
-    }
-
-    public DbResource(MeterRegistry registry) {
-	    this.registry = registry;
-    }
-
     @GET
     @Path("/db")
     public World db() {
-     Supplier<World> supplier = () -> {
         World world = randomWorldForRead();
         if (world==null) throw new IllegalStateException( "No data found in DB. Did you seed the database? Make sure to invoke /createdata once." );
         return world;
-     };
-     return registry.timer("db.test").wrap(supplier).get();
     }
 
     @GET

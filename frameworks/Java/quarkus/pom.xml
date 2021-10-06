@@ -20,7 +20,8 @@
         <module>reactive-routes-pgclient</module>
         <module>resteasy-reactive-pgclient</module>
         <module>resteasy-reactive-hibernate</module>
-        <module>resteasy-reactive-hibernate-reactive</module>
+	<module>resteasy-reactive-hibernate-reactive</module>
+	<module>resteasy-hibernate-h2</module>
     </modules>
 
     <dependencyManagement>

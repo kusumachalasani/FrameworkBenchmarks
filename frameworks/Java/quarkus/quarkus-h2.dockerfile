@@ -1,6 +1,6 @@
 FROM maven:3.6.3-jdk-11-slim as maven
 WORKDIR /quarkus
-ENV MODULE=resteasy-hibernate
+ENV MODULE=resteasy-hibernate-h2
 
 COPY pom.xml pom.xml
 COPY $MODULE/pom.xml $MODULE/pom.xml
@@ -21,7 +21,7 @@ WORKDIR /quarkus
 
 FROM openjdk:11.0.6-jdk-slim
 WORKDIR /quarkus
-ENV MODULE=resteasy-hibernate
+ENV MODULE=resteasy-hibernate-h2
 
 COPY --from=maven /quarkus/$MODULE/target/quarkus-app/lib lib
 COPY --from=maven /quarkus/$MODULE/target/quarkus-app/quarkus quarkus
