@@ -29,6 +29,7 @@ public class DbResource {
     @Inject
     WorldRepository worldRepository;
 
+    @Inject
     private MeterRegistry registry;
 
     public DbResource() {

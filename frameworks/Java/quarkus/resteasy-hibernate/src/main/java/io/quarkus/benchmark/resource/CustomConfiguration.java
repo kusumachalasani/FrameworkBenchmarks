@@ -47,9 +47,9 @@ public class CustomConfiguration {
         return new MeterFilter() {
             @Override
             public DistributionStatisticConfig configure(Meter.Id id, DistributionStatisticConfig config) {
-                if(id.getName().startsWith("db")) {
+                if(id.getName().startsWith("db") || id.getName().startsWith("http")) {
                     return DistributionStatisticConfig.builder()
-                        .percentiles(0.5, 0.95)     // median and 95th percentile, not aggregable
+                        .percentiles(0.5, 0.75, 0.95, 0.99, 0.999, 0.9999, 0.99999, 1.0)     // percentile, not aggregable
                         .percentilesHistogram(true) // histogram buckets (e.g. prometheus histogram_quantile)
                         .build()
                         .merge(config);
