@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.13-slim
 
 ADD ./ /granian
 
@@ -8,4 +8,4 @@ RUN pip install -r /granian/requirements.txt
 
 EXPOSE 8080
 
-CMD python run.py asgi
+CMD python run.py asgi st

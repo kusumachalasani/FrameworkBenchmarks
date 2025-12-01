@@ -1,38 +1,41 @@
-extern crate dotenv;
-extern crate serde_derive;
-#[macro_use]
-extern crate async_trait;
-
-mod database_mongo_raw;
-mod models_common;
-mod models_mongo;
+mod common;
+mod mongo_raw;
 mod server;
-mod utils;
 
-use axum::http::{header, HeaderValue};
-use axum::{
-    extract::Query, http::StatusCode, response::IntoResponse, routing::get, Extension,
-    Json, Router,
+use common::{models::World, random_id};
+use mongo_raw::database::{
+    find_world_by_id, find_worlds, update_worlds, DatabaseConnection,
 };
-use dotenv::dotenv;
-use mongodb::options::{ClientOptions, Compressor};
-use mongodb::Client;
-use rand::{rngs::SmallRng, thread_rng, Rng, SeedableRng};
+
+use common::{
+    get_env,
+    utils::{parse_params, Params},
+};
 use std::time::Duration;
-use tower_http::set_header::SetResponseHeaderLayer;
 
-use database_mongo_raw::{
-    find_world_by_id, find_worlds, update_worlds,
+use axum::{
+    extract::Query, http::StatusCode, response::IntoResponse, routing::get, Router,
 };
-use utils::get_environment_variable;
-use database_mongo_raw::DatabaseConnection;
-use models_mongo::{World};
-use utils::{parse_params, Params};
+
+use mimalloc::MiMalloc;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
+
+#[cfg(not(feature = "simd-json"))]
+use axum::Json;
+#[cfg(feature = "simd-json")]
+use common::simd_json::Json;
+
+use dotenv::dotenv;
+use mongodb::{
+    options::{ClientOptions, Compressor},
+    Client,
+};
+use rand::{rngs::SmallRng, rng, SeedableRng};
 
 async fn db(DatabaseConnection(db): DatabaseConnection) -> impl IntoResponse {
-    let mut rng = SmallRng::from_rng(&mut thread_rng()).unwrap();
-
-    let random_id = (rng.gen::<u32>() % 10_000 + 1) as i32;
+    let random_id = random_id(&mut rng());
 
     let world = find_world_by_id(db, random_id)
         .await
@@ -47,16 +50,8 @@ async fn queries(
 ) -> impl IntoResponse {
     let q = parse_params(params);
 
-    let mut rng = SmallRng::from_rng(&mut thread_rng()).unwrap();
-    let mut ids: Vec<i32> = Vec::with_capacity(q as usize);
-
-    for _ in 0..q {
-        let random_id = (rng.gen::<u32>() % 10_000 + 1) as i32;
-
-        ids.push(random_id);
-    }
-
-    let worlds = find_worlds(db, ids).await;
+    let mut rng = SmallRng::from_rng(&mut rng());
+    let worlds = find_worlds(db, &mut rng, q).await;
     let results = worlds.expect("worlds could not be retrieved");
 
     (StatusCode::OK, Json(results))
@@ -68,24 +63,15 @@ async fn updates(
 ) -> impl IntoResponse {
     let q = parse_params(params);
 
-    let mut rng = SmallRng::from_rng(&mut thread_rng()).unwrap();
-    let mut ids: Vec<i32> = Vec::with_capacity(q as usize);
+    let mut rng = SmallRng::from_rng(&mut rng());
 
-    for _ in 0..q {
-        let random_id = (rng.gen::<u32>() % 10_000 + 1) as i32;
-
-        ids.push(random_id);
-    }
-
-    let worlds = find_worlds(db.clone(), ids)
+    let worlds = find_worlds(db.clone(), &mut rng, q)
         .await
         .expect("worlds could not be retrieved");
-    let mut updated_worlds: Vec<World> = Vec::with_capacity(q as usize);
+    let mut updated_worlds: Vec<World> = Vec::with_capacity(q);
 
     for mut world in worlds {
-        let random_number = (rng.gen::<u32>() % 10_000 + 1) as i32;
-
-        world.random_number = random_number as f32;
+        world.random_number = random_id(&mut rng);
         updated_worlds.push(world);
     }
 
@@ -98,28 +84,13 @@ async fn updates(
 
 fn main() {
     dotenv().ok();
-
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-
-    for _ in 1..num_cpus::get() {
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
-            rt.block_on(serve());
-        });
-    }
-    rt.block_on(serve());
+    server::start_tokio(serve_app)
 }
 
-async fn serve() {
-    let database_url: String = get_environment_variable("AXUM_TECHEMPOWER_MONGODB_URL");
-    let max_pool_size: u32 = get_environment_variable("AXUM_TECHEMPOWER_MAX_POOL_SIZE");
-    let min_pool_size: u32 = get_environment_variable("AXUM_TECHEMPOWER_MIN_POOL_SIZE");
+async fn serve_app() {
+    let database_url: String = get_env("MONGODB_URL");
+    let max_pool_size: u32 = get_env("MONGODB_MAX_POOL_SIZE");
+    let min_pool_size: u32 = get_env("MONGODB_MIN_POOL_SIZE");
 
     let mut client_options = ClientOptions::parse(database_url).await.unwrap();
 
@@ -141,22 +112,12 @@ async fn serve() {
 
     let client = Client::with_options(client_options).unwrap();
     let database = client.database("hello_world");
-    let server_header_value = HeaderValue::from_static("Axum");
 
     let app = Router::new()
         .route("/db", get(db))
         .route("/queries", get(queries))
         .route("/updates", get(updates))
-        .layer(Extension(database))
-        .layer(SetResponseHeaderLayer::if_not_present(
-            header::SERVER,
-            server_header_value,
-        ));
+        .with_state(database);
 
-    server::builder()
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    server::serve(app, Some(8000)).await
 }
-
-

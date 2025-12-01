@@ -1,16 +1,11 @@
 <?php
-/**
- * Spiral Framework.
- *
- * @license   MIT
- * @author    Anton Titov (Wolfy-J)
- */
+
 declare(strict_types=1);
 
 namespace App;
 
-use App\Bootloader\DebugBootloader;
 use App\Bootloader\RoutesBootloader;
+use Spiral\Boot\Bootloader\CoreBootloader;
 use Spiral\Bootloader;
 use Spiral\DotEnv\Bootloader as DotEnv;
 use Spiral\Framework\Kernel;
@@ -19,30 +14,25 @@ use Spiral\Cycle\Bootloader as CycleBridge;
 use Spiral\RoadRunnerBridge\Bootloader as RoadRunnerBridge;
 use Spiral\Stempler\Bootloader as Stempler;
 use Spiral\Scaffolder\Bootloader as Scaffolder;
+use Spiral\Tokenizer\Bootloader\TokenizerListenerBootloader;
 
 class App extends Kernel
 {
+    protected const SYSTEM = [
+        CoreBootloader::class,
+        TokenizerListenerBootloader::class,
+        // Environment configuration
+        DotEnv\DotenvBootloader::class,
+    ];
+
     /*
      * List of components and extensions to be automatically registered
      * within system container on application start.
      */
     protected const LOAD = [
-        // Environment configuration
-        DotEnv\DotenvBootloader::class,
-
         // Core Services
-        Bootloader\DebugBootloader::class,
         Bootloader\SnapshotsBootloader::class,
-
-        // Security and validation
-        Bootloader\Security\EncrypterBootloader::class,
-        Bootloader\Security\ValidationBootloader::class,
-        Bootloader\Security\FiltersBootloader::class,
-        Bootloader\Security\GuardBootloader::class,
-
         RoadRunnerBridge\HttpBootloader::class,
-
-        DebugBootloader::class,
 
         // HTTP extensions
         Nyholm\NyholmBootloader::class,
@@ -62,17 +52,10 @@ class App extends Kernel
         // Template engine
         Stempler\StemplerBootloader::class,
 
-        Scaffolder\ScaffolderBootloader::class,
-
         // Framework commands
         Bootloader\CommandBootloader::class,
         RoadRunnerBridge\CommandBootloader::class,
-    ];
 
-    /*
-     * Application specific services and extensions.
-     */
-    protected const APP = [
         RoutesBootloader::class,
     ];
 }

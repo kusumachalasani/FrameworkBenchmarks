@@ -1,4 +1,4 @@
-FROM golang:1.18
+FROM docker.io/golang:1.24.2
 
 WORKDIR /silverlining
 

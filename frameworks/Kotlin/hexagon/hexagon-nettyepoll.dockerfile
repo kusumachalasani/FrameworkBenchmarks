@@ -1,26 +1,24 @@
 #
 # BUILD
 #
-FROM gradle:7.4.2-jdk11 AS gradle_build
+FROM docker.io/bellsoft/liberica-runtime-container:jdk-all-25-cds-musl AS build
 USER root
 WORKDIR /hexagon
 
-COPY src src
-COPY build.gradle build.gradle
-RUN gradle --quiet
+ADD . .
+RUN ./gradlew --quiet classes
+RUN ./gradlew --quiet -x test installDist
 
 #
 # RUNTIME
 #
-FROM eclipse-temurin:17-jre-alpine
-ENV DBSTORE postgresql
+FROM docker.io/bellsoft/liberica-runtime-container:jre-25-cds-slim-musl
+ARG PROJECT=hexagon_nettyepoll_postgresql
+
 ENV POSTGRESQL_DB_HOST tfb-database
-ENV WEBENGINE netty_epoll
-ENV PROJECT hexagon
-ENV DISABLE_CHECKS true
+ENV JDK_JAVA_OPTIONS -XX:+AlwaysPreTouch -XX:+UseParallelGC -XX:+UseNUMA
+ENV maximumPoolSize 300
 
-COPY --from=gradle_build /hexagon/build/install/$PROJECT /opt/$PROJECT
+COPY --from=build /hexagon/$PROJECT/build/install/$PROJECT /opt/$PROJECT
 
-EXPOSE 9090
-
-ENTRYPOINT /opt/$PROJECT/bin/$PROJECT
+ENTRYPOINT [ "/opt/hexagon_nettyepoll_postgresql/bin/hexagon_nettyepoll_postgresql" ]

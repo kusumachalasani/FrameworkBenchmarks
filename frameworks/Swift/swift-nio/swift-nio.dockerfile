@@ -1,7 +1,7 @@
 # ================================
 # Build image
 # ================================
-FROM swift:5.6-focal as build
+FROM swift:6.1 AS build
 WORKDIR /build
 
 # Copy entire repo into container
@@ -15,7 +15,7 @@ RUN swift build \
 # ================================
 # Run image
 # ================================
-FROM swift:5.6-focal-slim
+FROM swift:6.1-slim
 WORKDIR /run
 
 # Install Swift dependencies

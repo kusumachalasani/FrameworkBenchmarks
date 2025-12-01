@@ -2,15 +2,12 @@ package io.quarkus.benchmark.repository;
 
 import java.util.List;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Root;
+import jakarta.inject.Singleton;
 
 import io.quarkus.benchmark.model.Fortune;
 import io.smallrye.mutiny.Uni;
 
-@ApplicationScoped
+@Singleton
 public class FortuneRepository extends BaseRepository {
 
     public Uni<List<Fortune>> findAll() {
@@ -18,4 +15,5 @@ public class FortuneRepository extends BaseRepository {
                 session -> session.createQuery("SELECT F FROM Fortune F", Fortune.class).getResultList()
         );
     }
+
 }

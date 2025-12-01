@@ -1,219 +1,113 @@
-use std::{cell::RefCell, error::Error, fmt, future::Future, io, time::Duration};
+#[path = "./db_util.rs"]
+mod db_util;
 
-use diesel::prelude::{ConnectionError, ExpressionMethods, QueryDsl};
-use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
-use futures_util::stream::{FuturesUnordered, TryStreamExt};
-use rand::{rngs::SmallRng, Rng, SeedableRng};
-use tang_rs::{Manager, ManagerFuture, ManagerTimeout, Pool};
-use tokio::time::{sleep, Sleep};
+use core::cell::RefCell;
 
-use super::ser::{Fortune, Fortunes, World};
+use std::io;
 
-type DbResult<T> = Result<T, Box<dyn Error + Send + Sync + 'static>>;
+use diesel::prelude::*;
+use diesel_async::{
+    RunQueryDsl,
+    pooled_connection::{AsyncDieselConnectionManager, bb8},
+};
+use futures_util::future::{TryFutureExt, try_join, try_join_all};
+use xitca_postgres_diesel::AsyncPgConnection;
 
-pub struct DieselPoolManager(String);
+use crate::{
+    ser::{Fortune, Fortunes, World},
+    util::{DB_URL, HandleResult, Rand},
+};
 
-impl Manager for DieselPoolManager {
-    type Connection = AsyncPgConnection;
-    type Error = DieselPoolError;
-    type Timeout = Sleep;
-    type TimeoutError = ();
+use db_util::update_query_from_ids;
 
-    fn connect(&self) -> ManagerFuture<Result<Self::Connection, Self::Error>> {
-        let url = self.0.clone();
-        Box::pin(async move {
-            let conn = AsyncPgConnection::establish(url.as_str()).await?;
-            Ok(conn)
+pub struct Pool {
+    pool: bb8::Pool<AsyncPgConnection>,
+    rng: RefCell<Rand>,
+}
+
+pub async fn create() -> io::Result<Pool> {
+    bb8::Pool::builder()
+        .max_size(1)
+        .min_idle(Some(1))
+        .test_on_check_out(false)
+        .build(AsyncDieselConnectionManager::new(DB_URL))
+        .await
+        .map_err(io::Error::other)
+        .map(|pool| Pool {
+            pool,
+            rng: RefCell::new(Rand::default()),
         })
-    }
-
-    fn is_valid<'a>(
-        &'a self,
-        _: &'a mut Self::Connection,
-    ) -> ManagerFuture<'a, Result<(), Self::Error>> {
-        Box::pin(async { Ok(()) })
-    }
-
-    fn is_closed(&self, _: &mut Self::Connection) -> bool {
-        false
-    }
-
-    fn spawn<Fut>(&self, fut: Fut)
-    where
-        Fut: Future<Output = ()> + 'static,
-    {
-        tokio::task::spawn_local(fut);
-    }
-
-    fn timeout<Fut: Future>(&self, fut: Fut, dur: Duration) -> ManagerTimeout<Fut, Self::Timeout> {
-        ManagerTimeout::new(fut, sleep(dur))
-    }
 }
 
-pub enum DieselPoolError {
-    Inner(ConnectionError),
-    TimeOut,
-}
+impl Pool {
+    pub async fn get_world(&self) -> HandleResult<World> {
+        {
+            use crate::schema::world::dsl::*;
 
-impl fmt::Debug for DieselPoolError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            DieselPoolError::Inner(e) => e.fmt(f),
-            DieselPoolError::TimeOut => f
-                .debug_struct("DieselPoolError")
-                .field("source", &"Connection Timeout")
-                .finish(),
+            let w_id = self.rng.borrow_mut().gen_id();
+            let mut conn = self.pool.get().await?;
+            world.filter(id.eq(w_id)).first(&mut conn).map_err(Into::into)
         }
-    }
-}
-
-impl fmt::Display for DieselPoolError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl Error for DieselPoolError {}
-
-impl From<ConnectionError> for DieselPoolError {
-    fn from(e: ConnectionError) -> Self {
-        Self::Inner(e)
-    }
-}
-
-impl From<()> for DieselPoolError {
-    fn from(_: ()) -> Self {
-        Self::TimeOut
-    }
-}
-
-pub struct DieselPool {
-    rng: RefCell<SmallRng>,
-    pool: Pool<DieselPoolManager>,
-}
-
-pub async fn create(config: &str) -> io::Result<DieselPool> {
-    let pool = tang_rs::Builder::new()
-        .max_size(5)
-        .min_idle(5)
-        .always_check(false)
-        .idle_timeout(None)
-        .max_lifetime(None)
-        .build(DieselPoolManager(String::from(config)))
         .await
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-
-    Ok(DieselPool {
-        rng: RefCell::new(SmallRng::from_entropy()),
-        pool,
-    })
-}
-
-impl DieselPool {
-    pub async fn get_world(&self) -> DbResult<World> {
-        let mut conn = self.pool.get().await?;
-
-        let random_id = self.rng.borrow_mut().gen_range(1..10_001);
-
-        use crate::schema::world::dsl::*;
-
-        let w = world
-            .filter(id.eq(random_id))
-            .load::<World>(&mut *conn)
-            .await?
-            .pop()
-            .unwrap();
-
-        Ok(w)
     }
 
-    pub async fn get_worlds(&self, num: u16) -> DbResult<Vec<World>> {
-        let worlds = {
+    pub async fn get_worlds(&self, num: u16) -> HandleResult<Vec<World>> {
+        try_join_all({
+            use crate::schema::world::dsl::*;
+
+            let mut conn = self.pool.get().await?;
             let mut rng = self.rng.borrow_mut();
-            (0..num)
-                .map(|_| {
-                    let w_id = (rng.gen::<u32>() % 10_000 + 1) as i32;
 
-                    async move {
-                        let mut conn = self.pool.get().await?;
-
-                        use crate::schema::world::dsl::*;
-
-                        let w = world
-                            .filter(id.eq(w_id))
-                            .load::<World>(&mut *conn)
-                            .await?
-                            .pop()
-                            .unwrap();
-
-                        Ok(w)
-                    }
-                })
-                .collect::<FuturesUnordered<_>>()
-        };
-
-        worlds.try_collect().await
-    }
-
-    pub async fn update(&self, num: u16) -> DbResult<Vec<World>> {
-        use crate::schema::world::dsl::*;
-
-        let worlds = {
-            let mut rng = self.rng.borrow_mut();
-            (0..num)
-                .map(|_| {
-                    let w_id = rng.gen_range::<i32, _>(1..10_001);
-                    let new_id = rng.gen_range::<i32, _>(1..10_001);
-
-                    async move {
-                        let mut conn = self.pool.get().await?;
-
-                        let mut w = world
-                            .filter(id.eq(w_id))
-                            .load::<World>(&mut *conn)
-                            .await?
-                            .pop()
-                            .unwrap();
-
-                        w.randomnumber = new_id;
-
-                        DbResult::Ok(w)
-                    }
-                })
-                .collect::<FuturesUnordered<_>>()
-        };
-
-        let mut worlds = worlds.try_collect::<Vec<_>>().await?;
-
-        worlds.sort_by_key(|w| w.id);
-
-        let mut conn = self.pool.get().await?;
-
-        conn.transaction(move |conn| {
-            Box::pin(async move {
-                for w in &worlds {
-                    diesel::update(world)
-                        .filter(id.eq(w.id))
-                        .set(randomnumber.eq(w.randomnumber))
-                        .execute(conn)
-                        .await?;
-                }
-                Ok(worlds)
+            core::iter::repeat_with(|| {
+                let w_id = rng.gen_id();
+                world.filter(id.eq(w_id)).first(&mut conn).map_err(Into::into)
             })
+            .take(num as _)
+            .collect::<Vec<_>>()
         })
         .await
     }
 
-    pub async fn tell_fortune(&self) -> DbResult<Fortunes> {
-        let mut conn = self.pool.get().await?;
+    pub async fn update(&self, num: u16) -> HandleResult<Vec<World>> {
+        let (get, update) = {
+            use crate::schema::world::dsl::*;
 
-        use crate::schema::fortune::dsl::*;
+            let mut conn = self.pool.get().await?;
+            let mut rng = self.rng.borrow_mut();
 
-        let mut items = fortune.load::<Fortune>(&mut *conn).await?;
+            let (rngs, get) = core::iter::repeat_with(|| {
+                let w_id = rng.gen_id();
+                let rng = rng.gen_id();
 
-        items.push(Fortune::new(0, "Additional fortune added at request time."));
-        items.sort_by(|it, next| it.message.cmp(&next.message));
+                let get = world.filter(id.eq(w_id)).first::<World>(&mut conn);
 
-        Ok(Fortunes::new(items))
+                ((w_id, rng), async move {
+                    let mut w = get.await?;
+                    w.randomnumber = rng;
+                    HandleResult::Ok(w)
+                })
+            })
+            .take(num as _)
+            .collect::<(Vec<_>, Vec<_>)>();
+
+            let update = diesel::sql_query(update_query_from_ids(rngs))
+                .execute(&mut conn)
+                .map_err(Into::into);
+
+            (try_join_all(get), update)
+        };
+
+        try_join(get, update).await.map(|(worlds, _)| worlds)
+    }
+
+    pub async fn tell_fortune(&self) -> HandleResult<Fortunes> {
+        {
+            use crate::schema::fortune::dsl::*;
+
+            let mut conn = self.pool.get().await?;
+            fortune.load(&mut conn).map_err(Into::into)
+        }
+        .await
+        .map(Fortunes::new)
     }
 }
