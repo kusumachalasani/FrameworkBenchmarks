@@ -55,6 +55,7 @@ public class WorldRepository {
         }
     }
 
+    @Transactional
     public World[] updateNWorlds(final int count) {
         //We're again forced to use the "individual load" pattern by the rules:
         final World[] list = loadNWorlds(count);
