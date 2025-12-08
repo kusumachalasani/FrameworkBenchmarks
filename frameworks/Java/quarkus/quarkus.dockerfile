@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/openjdk-21:1.22 as maven
+FROM registry.access.redhat.com/ubi9/openjdk-21:1.22 AS maven
 ENV LANGUAGE='en_US:en'
 
 WORKDIR /quarkus
