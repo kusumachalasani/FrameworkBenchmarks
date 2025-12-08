@@ -42,4 +42,4 @@ COPY --chown=185 run_quarkus.sh run_quarkus.sh
 
 EXPOSE 8080
 USER 185
-ENTRYPOINT "./run_quarkus.sh"
+ENTRYPOINT ["./run_quarkus.sh"]
